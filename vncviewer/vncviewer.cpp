@@ -814,39 +814,44 @@ void CentreWindow(HWND hwnd)
 // is assumed to be invalid, so false is returned.
 bool ParseDisplay(LPTSTR display, LPTSTR phost, int hostlen, int *pport) 
 {
-    if (hostlen < (int)_tcslen(display))
-        return false;
+	if (hostlen < (int)_tcslen(display))
+		return false;
 
-    int tmp_port;
-    TCHAR *colonpos = _tcschr(display, L':');
-    if (colonpos == NULL)
+	int tmp_port;
+	TCHAR *colonpos = _tcsrchr(display, L':');
+	if (colonpos == NULL)
 	{
 		// No colon -- use default port number
-        tmp_port = RFB_PORT_OFFSET;
+		tmp_port = RFB_PORT_OFFSET;
 		_tcsncpy_s(phost, 256, display, MAX_HOST_NAME_LEN);
+	}
+	else if (colonpos == display)
+	{
+		// No address before colon
+		return false;
 	}
 	else
 	{
-		_tcsncpy_s(phost, 256, display, colonpos - display);
-		phost[colonpos - display] = L'\0';
-		if (colonpos[1] == L':') {
+		if (_stscanf_s(colonpos + 1, TEXT("%d"), &tmp_port) != 1)
+			return false;
+		if (tmp_port > USHRT_MAX)
+			return false;
+		if (*(colonpos - 1) == L':') {
 			// Two colons -- interpret as a port number
-			if (_stscanf_s(colonpos + 2, TEXT("%d"), &tmp_port) != 1) 
-				return false;
+			colonpos -= 1;
 		}
 		else
 		{
 			// One colon -- interpret as a display number or port number
-			if (_stscanf_s(colonpos + 1, TEXT("%d"), &tmp_port) != 1) 
-				return false;
-
 			// RealVNC method - If port < 100 interpret as display number else as Port number
 			if (tmp_port < 100)
 				tmp_port += RFB_PORT_OFFSET;
 		}
+		_tcsncpy_s(phost, 256, display, colonpos - display);
+		phost[colonpos - display] = L'\0';
 	}
-    *pport = tmp_port;
-    return true;
+	*pport = tmp_port;
+	return true;
 }
 
 
